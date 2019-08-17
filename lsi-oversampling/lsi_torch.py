@@ -1,6 +1,8 @@
 # Colin Joseph Brown, 2018
 import numpy as np
 import random
+import torch
+import torch.nn.functional as F
 
 
 def lsi_torch(x, y, params=None):
@@ -51,7 +53,7 @@ def lsi_torch(x, y, params=None):
     b = torch.tensor(range(num_weighted_samples)) + 1.0
 
     synth_x = torch.zeros([num_synthetic_instances] + list(x.shape[1:]))
-    synth_y = torch.zeros([num_synthetic_instances] + list(y.shape[1:]))
+    synth_y = torch.zeros([num_synthetic_instances] + [10] + list(y.shape[1:]))
 
     for i in range(num_synthetic_instances):
         t = float(i) / num_synthetic_instances
@@ -61,14 +63,11 @@ def lsi_torch(x, y, params=None):
 
         inds = random.sample(range(n), num_weighted_samples)
 
-        synth_x_components = np.array(
-            [w[j] * x[inds[j], ...] for j in range(num_weighted_samples)]
-        )
-        synth_x[i, ...] = np.sum(synth_x_components, axis=0)
+        synth_x_components = w[:, None, None, None] * x[inds]
+        synth_x[i, ...] = torch.sum(synth_x_components, dim=0)
 
-        synth_y_components = np.array(
-            [w[j] * y[inds[j], ...] for j in range(num_weighted_samples)]
-        )
-        synth_y[i, ...] = np.sum(synth_y_components, axis=0)
+        y_onehot = F.one_hot(y, num_classes=10)
+        synth_y_components = w[:, None] * y_onehot[inds].float()
+        synth_y[i, ...] = torch.sum(synth_y_components, dim=0)
 
     return synth_x, synth_y
